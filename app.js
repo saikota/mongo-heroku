@@ -3,12 +3,15 @@ var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
+var mongodb = require('mongodb');
 var bodyParser = require('body-parser');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
 
 var app = express();
+
+var db;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -45,5 +48,18 @@ app.use(function(err, req, res, next) {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT,()=> console.log(`example server started at port ${PORT}`));
+mongodb.MongoCLient.connect(process.env.MONGODB_URI||"mongodb://localhost:27017/test",(err,client)=>{
+  if(err){
+    console.log(err);
+    process.exit(1);
+  }
+  db = client.db();
+  console.log(" Database connection ready");
+
+var server = app.listen(PORT,()=> {
+  var port= server.address().port
+  console.log(`example server started at port ${port}`)
+});
+
+})
 module.exports = app;
