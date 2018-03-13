@@ -8,6 +8,7 @@ var bodyParser = require('body-parser');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
+var contacts = require('./routes/contacts');
 
 var app = express();
 
@@ -25,41 +26,67 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', index);
-app.use('/users', users);
+// app.use('/', index);
+// app.use('/users', users);
+// app.use('/contacts', contacts);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
 
 const PORT = process.env.PORT || 3000;
 
-mongodb.MongoCLient.connect(process.env.MONGODB_URI||"mongodb://localhost:27017/test",(err,client)=>{
-  if(err){
+var express = require("express");
+var bodyParser = require("body-parser");
+var mongodb = require("mongodb");
+var ObjectID = mongodb.ObjectID;
+
+var CONTACTS_COLLECTION = "contacts";
+
+var app = express();
+app.use(bodyParser.json());
+
+// Create a database variable outside of the database connection callback to reuse the connection pool in your app.
+var db;
+
+app.get("/api/contacts", function(req, res) {
+  db.collection(CONTACTS_COLLECTION).find({}).toArray(function(err, docs) {
+    if (err) {
+      handleError(res, err.message, "Failed to get contacts.");
+    } else {
+      res.status(200).json(docs);
+    }
+  });
+});
+
+app.post("/api/contacts", function(req, res) {
+  var newContact = req.body;
+
+ if (!req.body.name) {
+   handleError(res, "Invalid user input", "Must provide a name.", 400);
+ }
+
+ db.collection(CONTACTS_COLLECTION).insertOne(newContact, function(err, doc) {
+   if (err) {
+     handleError(res, err.message, "Failed to create new contact.");
+   } else {
+     res.status(201).json(doc.ops[0]);
+   }
+ });
+});
+// Connect to the database before starting the application server.
+mongodb.MongoClient.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/test", function (err, client) {
+  if (err) {
     console.log(err);
     process.exit(1);
   }
-  db = client.db();
-  console.log(" Database connection ready");
 
-var server = app.listen(PORT,()=> {
-  var port= server.address().port
-  console.log(`example server started at port ${port}`)
+  // Save database object from the callback for reuse.
+  db = client.db();
+  console.log("Database connection ready");
+
+  // Initialize the app.
+  var server = app.listen(process.env.PORT || 8080, function () {
+    var port = server.address().port;
+    console.log("App now running on port", port);
+  });
 });
 
-})
 module.exports = app;
